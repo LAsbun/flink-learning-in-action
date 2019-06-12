@@ -1,5 +1,7 @@
 package myflink.stream.task;
 
+import static java.time.LocalDateTime.now;
+
 import org.apache.flink.api.common.functions.FlatMapFunction;
 import org.apache.flink.api.common.functions.ReduceFunction;
 import org.apache.flink.api.java.tuple.Tuple2;
@@ -7,6 +9,7 @@ import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.DataStreamSource;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
 import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.util.Collector;
 
@@ -28,6 +31,7 @@ public class SocketWindowCount {
     // 设置并发度为1， 方便观察输出
     environment.setParallelism(1);
 
+    // 输入流
     DataStreamSource<String> socketTextStream = environment.socketTextStream(host, port);
 
     // 对输入的数据进行拆分处理
@@ -36,9 +40,17 @@ public class SocketWindowCount {
         .keyBy(0)
         // 设置窗口，每 30s为一个窗口，每5s计算一次
         .timeWindow(Time.seconds(30), Time.seconds(5))
+        // 计算
         .reduce(CountReduce());
 
-    reduce.print();
+    // 打印到控制台 输出时间
+    reduce.addSink(new RichSinkFunction<Tuple2<String, Long>>() {
+
+      @Override
+      public void invoke(Tuple2<String, Long> value, Context context) {
+        System.out.println(now() + " word: " + value.f0 + " count: " + value.f1);
+      }
+    });
 
     environment.execute("SocketWindowCount");
 
