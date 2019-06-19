@@ -169,9 +169,10 @@ public class RideAndFareExercise {
   private static class ConnectProcess extends
       CoProcessFunction<TaxiFare, TaxiRide, Tuple2<TaxiFare, TaxiRide>> {
 
-    // 设置两个state
+    // 设置两个state 存储没有对应的ride 的 fare
     private ValueState<TaxiFare> fareListState;
 
+    // 存储没有对应的fare 的 ride
     private ValueState<TaxiRide> rideListState;
 
     @Override
@@ -228,11 +229,13 @@ public class RideAndFareExercise {
         fareListState.clear();
       } else {
         rideListState.update(value);
+        // 注册时间，
         ctx.timerService().registerEventTimeTimer(value.getEventTime());
       }
     }
   }
 
+  // 这里其实就是对整个窗口内的数据进行一个排序，整合输出
   static class topN extends
       ProcessWindowFunction<Tuple3<Long, Float, Timestamp>, String, Tuple, TimeWindow> {
 
